@@ -1,7 +1,6 @@
 
 export async function bind_oaas_behavior(oaas_ctx, options) ::
   const { tgt_router, obj_context } = oaas_ctx
-  const ms_obj_ttl = options.ms_obj_ttl || null
 
   const oaas_behavior_api = @{}
     __proto__: null
@@ -37,7 +36,9 @@ export async function bind_oaas_behavior(oaas_ctx, options) ::
 
     async _startObject(fn_behavior, obj_ctx, id_prev, state) ::
       const mx = tgt_router.xtgt()
-      mx.target_opt = @{} ms_ttl: ms_obj_ttl
+      mx.target_opt = @{}
+        ms_ttl: options.ms_obj_ttl || 6000
+        on_cancel: @=> obj_ctx.deactivate(mx.id)
 
       await fn_behavior @ mx, obj_ctx, state
       if mx.is_active() ::
