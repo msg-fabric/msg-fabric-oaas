@@ -1,0 +1,61 @@
+import { bind_oaas_ping } from './ping.jsy'
+import { bind_oaas_route } from './route.jsy'
+import { bind_oaas_obj_context } from './obj_context.jsy'
+import { bind_oaas_behavior } from './behavior.jsy'
+
+const default_oaas_options = @{}
+  id_oaas_ping: 'oaas_ping'
+  ms_ping_timeout: 300
+  ms_ping_alive: 10000
+
+  oaas_prefix: 'oaas.'
+  ms_route_cache: 10000
+  ms_route_found: 120000
+  ms_route_not_found: 30000
+
+  on_oaas_route(id_oaas_route, found) ::
+    if ! found :: console.log @ 'OAAS route not found:', id_oaas_route
+
+
+export default oaas_plugin
+export function oaas_plugin(plugin_options) ::
+  plugin_options = Object.assign @ {}, default_oaas_options, plugin_options
+
+  return hub => ::
+    hub.initOaaS = initOaaS
+
+    function initOaaS(options) ::
+      options = Object.assign @ {}, plugin_options, options
+      const tgt_router = options.tgt_router || hub.local
+
+      const oaas_ctx = @{}
+        __proto__: @{}
+          __proto__: null
+          hub_router: hub.router,
+          tgt_router,
+          rpc: hub.rpc.from(tgt_router)
+
+      oaas_ctx.on_oaas_route = options.on_oaas_route || Boolean
+      oaas_ctx.loadConfig = options.loadConfig =
+        as_load_config(options.loadConfig, oaas_ctx)
+
+      bind_oaas_ping @ oaas_ctx, options
+      bind_oaas_route @ oaas_ctx, options
+      bind_oaas_obj_context @ oaas_ctx, options
+      bind_oaas_behavior @ oaas_ctx, options
+
+      if options.oaas_prefix ::
+        hub.router.addDiscovery @ options.oaas_prefix, oaas_ctx.as_oaas_route
+      return oaas_ctx
+
+
+  function as_load_config(load_config, oaas_ctx) ::
+    if Array.isArray(load_config) ::
+      const o_config = oaas_ctx.rpc.to(load_config)
+      return async key => await o_config.m$_oaas_config(key)
+
+    if 'function' === typeof load_config ::
+      return load_config
+
+    throw new TypeError
+

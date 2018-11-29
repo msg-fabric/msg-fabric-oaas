@@ -1,0 +1,52 @@
+
+export function bind_oaas_db_adapter(options0, oaas_db_api, loadDB) ::
+  const adapter = @\ hub, options1 =>
+    oaas_db_adapter @
+      hub, oaas_db_api, loadDB,
+      options0, options1
+
+  return options0 && options0.hub
+    ? adapter @ options0.hub
+    : adapter
+
+
+
+export function oaas_db_adapter(hub, oaas_db_api, loadDB, ...args) ::
+  const options = Object.assign @ {loadDB}, ...args
+  let ms_db_ttl = options.ms_ttl || options.ms_db_ttl || 300000
+
+  if null == options.loadDBConfig ::
+    options.loadDBConfig = (id_route, id_target) =>
+      hub.oaas.loadConfig @ `db--${id_route}--${id_target}`
+
+  return @{}
+    __proto__: null
+
+    loadDBConfig: options.loadDBConfig
+    setTTL(ms_ttl) :: ms_db_ttl = ms_ttl
+
+    addDBRoute(id_route, is_public) ::
+      const tgt_router = hub.localRoute(id_route, ! is_public)
+      tgt_router.rpc = hub.rpc.from(tgt_router)
+
+      tgt_router.addDiscovery @\ {key: id_target, host} =>
+        this.addDBTarget @ id_target, host
+
+      return tgt_router
+
+
+    async addDBTarget(id_target, tgt_router) ::
+      if null == tgt_router :: tgt_router = hub.local
+      if ! tgt_router.id_route :: await tgt_router
+      const id_route = tgt_router.id_route
+
+      const cfg = await this.loadDBConfig @ id_route, id_target, hub
+      if null == cfg :: return
+
+      const db = await options.loadDB(cfg, id_route, id_target)
+      if null == db :: return
+
+      const rpc = tgt_router.rpc || hub.rpc.from(tgt_router)
+      const target = rpc.api_target @: db, __proto__: oaas_db_api
+      return tgt_router.addTarget @ id_target, target, @{} ms_ttl: ms_db_ttl
+

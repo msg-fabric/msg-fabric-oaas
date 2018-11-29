@@ -1,0 +1,93 @@
+import { bind_oaas_db_adapter } from './_adapter.jsy'
+
+export default oaas_pouch_db_plugin
+export function oaas_pouch_db_plugin(PouchDB, options0) ::
+  return bind_oaas_db_adapter @
+    options0, oaas_pouch_db_api,
+    cfg => new PouchDB @ cfg.conn
+
+
+const pouchdb_base_api = @{}
+  __proto__: null
+
+  async _db_get(_id, attr) ::
+    try ::
+      const cur = await this.db.get(_id) 
+      return attr ? cur[attr] : cur
+    catch err ::
+      if 404 !== err.status ::
+        throw err
+
+  async _db_set(_id, key, value) ::
+    const obj = @{} _id, [key]: value
+    try ::
+      const cur = await this.db.get(_id)
+      if value == cur[key] ::
+        return false
+      obj._rev = cur._rev
+    catch err ::
+      if 404 !== err.status ::
+        throw err
+
+    try ::
+      await this.db.put(obj)
+      return true
+    catch err ::
+      if 409 === err.status ::
+        return false
+      else throw err
+
+  async _db_update(_id, _rev, obj) ::
+    obj = Object.assign @ {}, obj, _rev ? {_id, _rev} : {_id}
+    try ::
+      return await this.db.put @ obj
+    catch err ::
+      if 409 === err.status ::
+        return @{} ok: false
+      else throw err
+
+  async _db_put(obj) ::
+    try ::
+      const ans = await this.db.put @ obj
+      return ans.ok
+    catch err ::
+      if 409 === err.status ::
+        return false
+      else throw err
+
+
+export const oaas_pouch_db_api = @{}
+  __proto__: pouchdb_base_api
+  rpc_options: @{}
+    parallel: true
+
+
+  async m$_getRecent(oid) ::
+    return await this._db_get @ 'r.'+oid, 'recent'
+  async m$_setRecent(oid, recent, previous) ::
+    const _id = 'r.'+oid
+    if ! previous ::
+      return await this._db_set @ _id, 'recent', recent
+
+    const cur = Object @ await this._db_get(_id)
+    if cur.recent ::
+      const not_eq = previous.some @\ v, i => v !== cur.recent[i]
+      if not_eq  :: return false
+
+    if ! cur._id :: cur._id = _id
+    cur.recent = recent
+    return await this._db_put(cur)
+
+
+  async m$_getBehavior(oid) ::
+    return await this._db_get @ 'b.'+oid, 'behavior'
+  async m$_setBehavior(oid, behavior) ::
+    return await this._db_set @ 'b.'+oid, 'behavior', behavior
+
+
+  async m$_loadState(oid) ::
+    const cur = Object @ await this._db_get @ 's.'+oid
+    return @{} state: cur.state, rev: cur._rev
+  async m$_updateState(oid, state, rev) ::
+    return await this._db_update @ 's.'+oid, rev, {state}
+

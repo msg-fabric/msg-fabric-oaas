@@ -1,0 +1,48 @@
+import { bind_oaas_db_adapter } from './_adapter.jsy'
+
+export default oaas_keyv_db_plugin
+export function oaas_keyv_db_plugin(KeyV, options0) ::
+  return bind_oaas_db_adapter @
+    options0, oaas_keyv_db_api,
+    cfg => ::
+      let { conn, namespace } = cfg
+      if true === namespace :: namespace = key
+
+      return new KeyV @ conn, {namespace}
+
+
+export const oaas_keyv_db_api = @{}
+  __proto__: null
+  rpc_options: @{}
+    parallel: true
+
+
+  async m$_getRecent(oid) ::
+    return await this.db.get @ 'r.'+oid
+  async m$_setRecent(oid, recent, previous) ::
+    const _id = 'r.'+oid
+    if ! previous ::
+      return await this.db.set @ _id, recent
+
+    const cur = Object @ await this.db.get(_id)
+    if cur.recent ::
+      const not_eq = previous.some @\ v, i => v !== cur.recent[i]
+      if not_eq :: return false
+
+    cur.recent = recent
+    return await this.db.set(_id, cur)
+
+  async m$_getBehavior(oid) ::
+    return await this.db.get @ 'b.'+oid
+  async m$_setBehavior(oid, behavior) ::
+    return await this.db.set @ 'b.'+oid, behavior
+
+
+  async m$_loadState(oid) ::
+    const cur = await this.db.get @ 's.'+oid
+    return @{} state: cur.state, rev: cur._rev
+  async m$_updateState(oid, rev, state) ::
+    const cur = Object @ await this.db.get @ 's.'+oid
+    if rev && rev != cur.rev :: return false
+    return await this.db.set @ 's.'+oid, {rev, state}
+

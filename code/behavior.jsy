@@ -1,0 +1,74 @@
+
+export async function bind_oaas_behavior(oaas_ctx, options) ::
+  const { tgt_router, obj_context } = oaas_ctx
+  const ms_obj_ttl = options.ms_obj_ttl || null
+
+  const oaas_behavior_api = @{}
+    __proto__: null
+
+    rpc_options: @{}
+      parallel: true
+      params: true
+
+    async _asObjContext(pkt, info) ::
+      const { id_oaas } = info
+      const { _invalid_, id_state, id_recent } = await load_state_context(id_oaas, info)
+      if ! _invalid_ ::
+        return obj_context @: id_oaas, id_state, id_recent
+
+    async m$_newObject(pkt, info) ::
+      const behavior = this.unpackBehavior(pkt, info, true)
+      const obj_ctx = await this._asObjContext(pkt, info)
+      obj_ctx.is_new = true
+
+      const fn_behavior = await this.loadBehavior @ behavior, obj_ctx
+      if fn_behavior ::
+        await obj_ctx.setBehavior(behavior)
+        return this._startObject @ fn_behavior, obj_ctx
+
+    async m$_loadObject(pkt, info) ::
+      const behavior = this.unpackBehavior(pkt, info)
+      const obj_ctx = await this._asObjContext(pkt, info)
+
+      const fn_behavior = await this.loadBehavior @ behavior, obj_ctx
+      if fn_behavior ::
+        const state = await obj_ctx.loadState()
+        return this._startObject @ fn_behavior, obj_ctx, info.id_prev, state
+
+    async _startObject(fn_behavior, obj_ctx, id_prev, state) ::
+      const mx = tgt_router.xtgt()
+      mx.target_opt = @{} ms_ttl: ms_obj_ttl
+
+      await fn_behavior @ mx, obj_ctx, state
+      if mx.is_active() ::
+        if await obj_ctx.activate(mx.id, id_prev) ::
+          return mx.id
+
+    unpackBehavior(pkt) :: return @[] pkt[0], pkt[1]
+
+    // loadBehavior(behavior, obj_ctx) ::
+    //   return (mx, obj_ctx, state) => ::
+    //     mx.use @\ pkt, pktctx :: /* implementing behavior */
+
+
+  Object.assign @ Object.getPrototypeOf(oaas_ctx), @{}
+    oaas_behavior_api
+
+  Object.assign @ oaas_ctx, @{}
+    addBehaviorRoute, newBehaviorTarget
+
+  function addBehaviorRoute(id_route, ...args) ::
+    return oaas_ctx.hub_router.addRoute @ id_route,
+      newBehaviorTarget(...args)
+
+  function newBehaviorTarget(loadBehavior) ::
+    return oaas_ctx.rpc.api_target @:
+      __proto__: oaas_behavior_api, loadBehavior
+
+  async function load_state_context(id_oaas, info) ::
+    if undefined !== info.id_state || undefined !== info.id_recent ::
+      return info
+
+    const cfg = await oaas_ctx.loadConfig(id_oaas[0])
+    return cfg ? cfg : {_invalid_: true}
+

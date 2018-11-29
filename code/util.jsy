@@ -1,0 +1,12 @@
+
+export function dedupAsyncLookup(fn_lookup, MapKlass=Map) ::
+  const map = new MapKlass()
+  return key => ::
+    let p = map.get(key)
+    if undefined === p ::
+      p = fn_lookup(key)
+      map.set(key, p)
+      const clear = @=> map.delete(key)
+      p.then(clear, clear) 
+    return p
+

@@ -1,0 +1,35 @@
+{
+  "name": "msg-fabric-oaas",
+  "version": "0.1.0",
+  "description": "Persistent distributed live object messaging.",
+  "license": "BSD-2-Clause",
+  "author": "Shane Holloway <shane.holloway@ieee.org>",
+  "homepage": "https://github.com/msg-fabric/msg-fabric-oaas#readme",
+  "bugs": {
+    "url": "https://github.com/msg-fabric/msg-fabric-oaas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/msg-fabric/msg-fabric-oaas.git"
+  },
+  "files": [
+    "cjs/",
+    "esm/",
+    "umd/"
+  ],
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "browser": "umd/index.min.js",
+  "dependencies": {},
+  "devDependencies": {
+    "rollup": "^0.67.3",
+    "rollup-plugin-jsy-lite": "^1.4.1"
+  },
+  "scripts": {
+    "clean": "rm -rf ./cjs/* ./esm/* ./umd/*",
+    "build": "rollup --config",
+    "watch": "npm -s run build -- --watch",
+    "pretest": "npm -s run build",
+    "test": "true"
+  }
+}

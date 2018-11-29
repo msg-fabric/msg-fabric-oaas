@@ -1,0 +1,64 @@
+
+export async function bind_oaas_obj_context(oaas_ctx, options) ::
+  const { rpc, tgt_router } = oaas_ctx
+
+  const obj_context_api = @{}
+    __proto__: null
+    rpc, send: tgt_router.send
+
+    async getRecent() ::
+      return await rpc.to(this.id_recent)
+        .m$_getRecent @ this.id_oaas[1]
+
+    async activate(id_current, id_prev) ::
+      return await rpc.to(this.id_recent)
+        .m$_setRecent @ this.id_oaas[1], id_current, id_prev
+
+    deactivate(id_current) ::
+      if ! id_current :: throw new Error
+      return this.activate(null, id_current)
+
+    async getBehavior() ::
+      return await rpc.to(this.id_state)
+        .m$_getBehavior @ this.id_oaas[1]
+
+    async setBehavior(behavior, init_state) ::
+      return await rpc.to(this.id_state)
+        .m$_setBehavior @ this.id_oaas[1], behavior, init_state
+
+    async loadState() ::
+      const ans = await rpc.to(this.id_state)
+        .m$_loadState(this.id_oaas[1])
+
+      if undefined === ans ::
+        this.rev_state = undefined
+      else ::
+        this.rev_state = ans.rev
+        return ans.state
+
+    async updateState(state) ::
+      const ans = await rpc.to(this.id_state)
+        .m$_updateState @ this.id_oaas[1], state, this.rev_state
+
+      const success = ans && true === ans.ok
+      if success :: this.rev_state = ans.rev
+      return success
+
+
+  Object.assign @ Object.getPrototypeOf(oaas_ctx), @{}
+    obj_context_api
+
+  return Object.assign @ oaas_ctx, @{}
+    obj_context
+
+
+  function obj_context({id_oaas, id_state, id_recent}) ::
+    if ! id_oaas[1] || '?' === id_oaas[1] ::
+      id_oaas = @[] id_oaas[0], tgt_router.newTargetId()
+
+    let rev_state
+    return @{}
+      __proto__: obj_context_api
+      id_oaas, rev_state
+      id_state, id_recent
+

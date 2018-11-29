@@ -1,0 +1,65 @@
+import { dedupAsyncLookup } from './util.jsy'
+
+export function bind_oaas_ping(oaas_ctx, options) ::
+  const { tgt_router } = oaas_ctx
+  const { send, timeouts } = tgt_router
+  const { id_oaas_ping, ms_ping_timeout } = options
+
+  const by_route = new Map()
+  const send_ping = dedupAsyncLookup @ _send_ping
+  const alive_belt = timeouts.hashbelt @
+    options.ms_ping_alive/4, 4, @=> new Set
+
+  tgt_router.addTarget @ id_oaas_ping, oaas_recv_ping
+
+  return Object.assign @ oaas_ctx, @{} oaas_ping
+
+
+  async function oaas_ping(id_loc) ::
+    if ! id_loc ::
+      return // invalid route
+
+    const id0 = id_loc[0]
+    if id0 === tgt_router.id_route ::
+      return id_loc // self-ref tgt_router route
+
+    let p, n=2
+    for const c of alive_belt ::
+      if c.has(id0) ::
+        return id_loc
+      if 0 >= n-- ::
+        p = send_ping(id0)
+
+    if await p ::
+      return id_loc
+
+
+  async function _send_ping(id_alive) ::
+    let resp = new Promise @ resolve => ::
+      by_route.set @ id_alive, resolve
+      timeouts @ ms_ping_timeout, resolve
+
+    await send @:
+      0: id_alive, 1: id_oaas_ping,
+      body: @[] tgt_router.id_route, true
+
+    resp = await resp
+    by_route.delete(id_alive)
+    return !! resp
+
+
+  function oaas_recv_ping(pkt) ::
+    const {0: id_alive, 1: want_reply} = Object @ pkt.body
+    if ! id_alive :: return
+
+    alive_belt[0].add(id_alive)
+    const resolve = by_route.get(id_alive)
+    if undefined !== resolve ::
+      by_route.delete(id_alive)
+      resolve(true)
+
+    if true === want_reply ::
+      return send @:
+        0: id_alive, 1: id_oaas_ping,
+        body: @[] tgt_router.id_route
+

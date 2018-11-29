@@ -1,0 +1,108 @@
+import { dedupAsyncLookup } from './util.jsy'
+
+export function bind_oaas_route(oaas_ctx, options) ::
+  const { hub_router } = oaas_ctx
+  Object.assign @ Object.getPrototypeOf(oaas_ctx), @{}
+    as_oaas_route, missing_oaas_route, init_oaas_route
+
+  async function as_oaas_route(id_oaas_route) ::
+    id_oaas_route = id_oaas_route.key || id_oaas_route
+    if 'string' !== typeof id_oaas_route :: throw new TypeError
+
+    const oaas_route_cfg = await oaas_ctx.loadConfig(id_oaas_route)
+    if oaas_route_cfg ::
+      init_oaas_route(id_oaas_route, oaas_route_cfg)
+      return true
+    else ::
+      missing_oaas_route(id_oaas_route)
+      return false
+
+  function missing_oaas_route(id_oaas_route) ::
+    hub_router.addRoute @
+      id_oaas_route, @=> null
+      @{} ms_ttl: options.ms_route_not_found
+
+    oaas_ctx.on_oaas_route @ id_oaas_route, false
+
+  function init_oaas_route(id_oaas_route, oaas_route_cfg) ::
+    const { id_recent, id_state } = oaas_route_cfg
+    const { rpc, oaas_ping } = oaas_ctx
+    const rpc_recent = rpc.client(id_recent)
+    const rpc_state = rpc.client(id_state)
+
+    const locate = dedupAsyncLookup @ _do_locate
+    const cache_belt = oaas_ctx.tgt_router.timeouts.hashbelt @
+      options.ms_route_cache/4, 4, @=> new Map
+
+
+    oaas_router.id_route = id_oaas_route
+    hub_router.addRoute @
+      id_oaas_route, oaas_router,
+      @{} ms_ttl: options.ms_route_found
+
+    oaas_ctx.on_oaas_route @ id_oaas_route, true
+    return oaas_router
+
+
+    async function oaas_router(pkt, pktctx) ::
+      const {1: id_target, meta, body} = pkt
+
+      :: // check tgt_router cache_belt
+        let n = 2
+        for const c of cache_belt ::
+          const id_loc = c.get(id_target)
+          if undefined !== id_loc ::
+            return pktctx.send @: 0: id_loc[0], 1: id_loc[1], meta, body
+
+          if 0 >= n-- ::
+            update_oaas_ping(id_target, id_loc)
+
+      ::
+        const id_loc = await locate(id_target)
+        if undefined !== id_loc ::
+          return pktctx.send @: 0: id_loc[0], 1: id_loc[1], meta, body
+
+
+    async function update_oaas_ping(id_target, id_prev) ::
+      const id_loc = await oaas_ping(id_prev)
+      if id_loc ::
+        cache_belt[0].set(id_target, id_loc)
+        return id_loc
+
+      // flush any existing items
+      for const c of cache_belt ::
+        c.delete(id_target)
+
+
+    async function _do_locate(id_target) ::
+      const r_prev = rpc_recent.m$_getRecent(id_target)
+      const r_behavior = rpc_state.m$_getBehavior(id_target)
+
+      const id_prev = await r_prev
+      if id_prev ::
+        // confirm stored recent id_loc
+        const id_loc = await update_oaas_ping(id_target, id_prev)
+        if id_loc :: return id_loc
+
+      const id_behavior = await r_behavior
+      if ! id_behavior :: return
+
+      :: // load from behavior
+        const load_args = @{}
+          id_oaas: @[] id_oaas_route, id_target
+          id_prev, id_state, id_recent
+
+        let id_loc = 2 === id_behavior.length
+          ? await rpc.to(id_behavior).m$_loadObject @ load_args
+          : await rpc.to(id_behavior) @ load_args
+          
+
+        if ! id_loc ::
+          // our behavior load didn't win the race; see who did
+          id_loc = await rpc_recent.m$_getRecent(id_target)
+          if ! id_loc :: return
+
+        cache_belt[0].set(id_target, id_loc)
+        update_oaas_ping(id_target, id_loc)
+        return id_loc
+
