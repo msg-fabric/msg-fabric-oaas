@@ -33,7 +33,7 @@ export function bind_oaas_route(oaas_ctx, options) ::
 
     const locate = dedupAsyncLookup @ _do_locate
     const cache_belt = oaas_ctx.tgt_router.timeouts.hashbelt @
-      options.ms_route_cache/4, 4, @=> new Map
+      options.ms_target_cache/4, 4, @=> new Map
 
 
     oaas_router.id_route = id_oaas_route

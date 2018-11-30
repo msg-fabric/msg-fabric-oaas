@@ -6,14 +6,14 @@ import { bind_oaas_behavior } from './behavior.jsy'
 const default_oaas_options = @{}
   id_oaas_ping: 'oaas_ping'
   ms_ping_timeout: 300 // 0.3 second ping timeout
-  ms_ping_alive: 60000 // 60 second cache
+  ms_ping_alive: 12000 // 12 second cache
 
   oaas_prefix: 'oaas.'
-  ms_route_cache: 60000 // 60 second cache
   ms_route_found: 120000 // 2 minutes of no traffic
   ms_route_not_found: 30000 // 30 seconds between retries
 
-  ms_obj_ttl: 120000, // 2 minutes of no traffic; should be no less than 2*ms_ping_alive
+  ms_target_cache: 60000 // 60 second cache
+  ms_obj_ttl: 120000, // 2 minutes of no traffic; should be no less than 2*ms_target_cache
 
   on_oaas_route(id_oaas_route, found) ::
     if ! found :: console.log @ 'OAAS route not found:', id_oaas_route
