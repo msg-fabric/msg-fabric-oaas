@@ -21,6 +21,7 @@ export function bind_oaas_route(oaas_ctx, options) ::
     hub_router.addRoute @
       id_oaas_route, @=> null
       @{} ms_ttl: options.ms_route_not_found
+          ttl_reset: false
 
     oaas_ctx.on_oaas_route @ id_oaas_route, false
 

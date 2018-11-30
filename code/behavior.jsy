@@ -37,7 +37,7 @@ export async function bind_oaas_behavior(oaas_ctx, options) ::
     async _startObject(fn_behavior, obj_ctx, id_prev, state) ::
       const mx = tgt_router.xtgt()
       mx.target_opt = @{}
-        ms_ttl: options.ms_obj_ttl || 6000
+        ms_ttl: options.ms_obj_ttl
         on_cancel: @=> obj_ctx.deactivate(mx.id)
 
       await fn_behavior @ mx, obj_ctx, state
