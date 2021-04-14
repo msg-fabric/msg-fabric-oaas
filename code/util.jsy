@@ -5,8 +5,7 @@ export function dedupAsyncLookup(fn_lookup, MapKlass=Map) ::
     let p = map.get(key)
     if undefined === p ::
       p = fn_lookup(key)
-      map.set(key, p)
-      const clear = @=> map.delete(key)
-      p.then(clear, clear) 
+      p.finally @=> map.delete(key)
+      map.set @ key, p
     return p
 

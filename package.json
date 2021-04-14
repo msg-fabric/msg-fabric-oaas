@@ -1,6 +1,6 @@
 {
   "name": "msg-fabric-oaas",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Persistent distributed live object messaging.",
   "license": "BSD-2-Clause",
   "author": "Shane Holloway <shane.holloway@ieee.org>",
@@ -20,10 +20,9 @@
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "browser": "umd/index.min.js",
-  "dependencies": {},
   "devDependencies": {
-    "rollup": "^0.67.3",
-    "rollup-plugin-jsy-lite": "^1.4.1"
+    "rollup": "^2.45.2",
+    "rollup-plugin-jsy": "^1.7.2"
   },
   "scripts": {
     "clean": "rm -rf ./cjs/* ./esm/* ./umd/*",

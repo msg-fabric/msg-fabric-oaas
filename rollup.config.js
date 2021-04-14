@@ -1,5 +1,5 @@
 import pkg from './package.json'
-import rpi_jsy from 'rollup-plugin-jsy-lite'
+import rpi_jsy from 'rollup-plugin-jsy'
 const pkg_name = (pkg.name || 'private').replace('-', '_')
 
 const configs = []
