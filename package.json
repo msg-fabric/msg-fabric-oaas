@@ -21,7 +21,7 @@
   "module": "esm/index.js",
   "browser": "umd/index.min.js",
   "devDependencies": {
-    "rollup": "^2.45.2",
+    "rollup": "^3.29.5",
     "rollup-plugin-jsy": "^1.7.2"
   },
   "scripts": {
